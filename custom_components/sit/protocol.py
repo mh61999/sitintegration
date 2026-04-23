@@ -60,13 +60,28 @@ def state_to_payload(state) -> dict[str, Any]:
     }
 
     if context is not None:
-        payload["context"] = {
-            "id": getattr(context, "id", None),
-            "parent_id": getattr(context, "parent_id", None),
-            "user_id": getattr(context, "user_id", None),
-        }
+        payload["context"] = _drop_none_values(
+            {
+                "id": getattr(context, "id", None),
+                "parent_id": getattr(context, "parent_id", None),
+                "user_id": getattr(context, "user_id", None),
+            }
+        )
 
-    return _json_safe(payload)
+    return _json_safe(_drop_none_values(payload))
+
+
+def _drop_none_values(value: Any) -> Any:
+    """Remove None values from nested protocol data before signing."""
+    if isinstance(value, dict):
+        return {
+            key: _drop_none_values(item)
+            for key, item in value.items()
+            if item is not None
+        }
+    if isinstance(value, list):
+        return [_drop_none_values(item) for item in value]
+    return value
 
 
 def _json_safe(value: Any) -> Any:

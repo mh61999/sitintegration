@@ -11,5 +11,5 @@
     "issue_tracker": "https://github.com/mh61999/sitintegration/issues",
     "loggers": ["custom_components.sit"],
     "requirements": [],
-    "version": "0.1.0"
+    "version": "0.1.1"
 }

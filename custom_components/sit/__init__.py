@@ -269,10 +269,10 @@ class SITRuntime:
             )
             return
 
-        payload = {
-            "entity": state_to_payload(new_state),
-            "old_state": old_state.state if old_state is not None else None,
-        }
+        payload = {"entity": state_to_payload(new_state)}
+        if old_state is not None:
+            payload["old_state"] = old_state.state
+
         self.hass.async_create_task(
             self.async_broadcast(MESSAGE_ENTITY_UPDATE, payload)
         )
