@@ -1,0 +1,38 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Pair SIT tablet",
+                "description": "Enter the websocket details shown by the Android app, then choose which Home Assistant entities this tablet may see and control.",
+                "data": {
+                    "host": "Tablet IP address",
+                    "port": "Tablet websocket port",
+                    "websocket_path": "Tablet websocket path",
+                    "pairing_code": "Pairing code",
+                    "device_name": "Device name",
+                    "exposed_entities": "Entities exposed to this tablet"
+                }
+            }
+        },
+        "error": {
+            "already_configured": "This tablet is already paired.",
+            "cannot_connect": "Could not connect to the tablet websocket.",
+            "connection_closed": "The tablet closed the pairing websocket before pairing finished.",
+            "invalid_pairing_code": "The tablet rejected the pairing code.",
+            "invalid_response": "The tablet sent an invalid pairing response.",
+            "missing_device_id": "The tablet did not send a device id.",
+            "token_not_confirmed": "The tablet did not confirm that it received the token."
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "SIT tablet options",
+                "description": "Choose which entities this tablet may see and control.",
+                "data": {
+                    "exposed_entities": "Entities exposed to this tablet"
+                }
+            }
+        }
+    }
+}
