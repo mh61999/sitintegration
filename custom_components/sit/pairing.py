@@ -8,6 +8,7 @@ import json
 import logging
 import secrets
 from typing import Awaitable, Callable
+from urllib.parse import urlsplit, urlunsplit
 
 from aiohttp import ClientError, WSMsgType
 
@@ -18,6 +19,11 @@ except ImportError:  # pragma: no cover - compatibility fallback for older HA
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
+try:
+    from homeassistant.helpers import network
+except ImportError:  # pragma: no cover - compatibility fallback for older HA
+    network = None
 
 from .const import (
     HMAC_ALGORITHM,
@@ -104,23 +110,38 @@ async def async_pair_device(
                 str(response.get("device_name") or requested_device_name or "").strip()
                 or "SIT tablet"
             )
-
-            await websocket.send_json(
-                {
-                    "type": MESSAGE_PAIRING_TOKEN,
-                    "protocol": PROTOCOL_VERSION,
-                    "device_id": device_id,
-                    "device_name": device_name,
-                    "auth_token": auth_token,
-                    "ha_websocket_path": SIT_WS_PATH_TEMPLATE.format(
-                        device_id=device_id
-                    ),
-                    "signature": {
-                        "algorithm": HMAC_ALGORITHM,
-                        "payload": "canonical JSON with sorted keys and no spaces",
-                    },
-                }
+            ha_websocket_path = SIT_WS_PATH_TEMPLATE.format(device_id=device_id)
+            ha_local_ip = _get_websocket_local_ip(websocket)
+            ha_base_url = _get_ha_base_url(hass)
+            ha_websocket_url = _build_ha_ip_websocket_url(
+                ha_base_url,
+                ha_local_ip,
+                ha_websocket_path,
+            ) or _build_ha_websocket_url(
+                ha_base_url,
+                ha_websocket_path,
             )
+
+            token_message = {
+                "type": MESSAGE_PAIRING_TOKEN,
+                "protocol": PROTOCOL_VERSION,
+                "device_id": device_id,
+                "device_name": device_name,
+                "auth_token": auth_token,
+                "ha_websocket_path": ha_websocket_path,
+                "signature": {
+                    "algorithm": HMAC_ALGORITHM,
+                    "payload": "canonical JSON with sorted keys and no spaces",
+                },
+            }
+            if ha_local_ip is not None:
+                token_message["ha_local_ip"] = ha_local_ip
+            if ha_base_url is not None:
+                token_message["ha_base_url"] = ha_base_url
+            if ha_websocket_url is not None:
+                token_message["ha_websocket_url"] = ha_websocket_url
+
+            await websocket.send_json(token_message)
 
             ack = await _receive_json(websocket)
             _validate_token_ack(ack, device_id)
@@ -199,3 +220,81 @@ def _build_ws_url(host: str, port: int, path: str) -> str:
         return f"{host.rstrip('/')}{path}"
 
     return f"ws://{host}:{port}{path}"
+
+
+def _get_ha_base_url(hass: HomeAssistant) -> str | None:
+    """Return Home Assistant's best local URL for the paired tablet."""
+    if network is None:
+        return None
+
+    try:
+        return network.get_url(
+            hass,
+            allow_internal=True,
+            allow_external=False,
+            allow_cloud=False,
+            allow_ip=True,
+            prefer_external=False,
+        )
+    except Exception as err:  # pragma: no cover - depends on HA network config
+        _LOGGER.debug("Could not resolve a Home Assistant local URL: %s", err)
+        return None
+
+
+def _get_websocket_local_ip(websocket) -> str | None:
+    """Return the HA-side local IP used for the tablet pairing socket."""
+    transports = (
+        getattr(getattr(websocket, "_writer", None), "transport", None),
+        getattr(
+            getattr(getattr(websocket, "_response", None), "connection", None),
+            "transport",
+            None,
+        ),
+    )
+
+    for transport in transports:
+        if transport is None:
+            continue
+        sockname = transport.get_extra_info("sockname")
+        if isinstance(sockname, tuple) and sockname:
+            return str(sockname[0])
+
+    return None
+
+
+def _build_ha_websocket_url(base_url: str | None, path: str) -> str | None:
+    """Build a full HA websocket URL from an HTTP base URL."""
+    if base_url is None:
+        return None
+
+    parts = urlsplit(base_url.rstrip("/"))
+    scheme = "wss" if parts.scheme == "https" else "ws"
+    return urlunsplit((scheme, parts.netloc, path, "", ""))
+
+
+def _build_ha_ip_websocket_url(
+    base_url: str | None,
+    local_ip: str | None,
+    path: str,
+) -> str | None:
+    """Build a full HA websocket URL using the HA-side LAN IP."""
+    if local_ip is None:
+        return None
+
+    if base_url is not None:
+        parts = urlsplit(base_url.rstrip("/"))
+        scheme = "wss" if parts.scheme == "https" else "ws"
+        port = parts.port
+    else:
+        scheme = "ws"
+        port = None
+
+    if port is None:
+        port = 443 if scheme == "wss" else 8123
+
+    if ":" in local_ip and not local_ip.startswith("["):
+        netloc = f"[{local_ip}]:{port}"
+    else:
+        netloc = f"{local_ip}:{port}"
+
+    return urlunsplit((scheme, netloc, path, "", ""))

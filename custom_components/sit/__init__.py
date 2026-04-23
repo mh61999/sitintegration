@@ -237,6 +237,11 @@ class SITRuntime:
             if state is not None:
                 entities.append(state_to_payload(state))
 
+        _LOGGER.debug(
+            "Sending SIT entity snapshot to %s with %s entities",
+            self.device_id,
+            len(entities),
+        )
         await self.async_send(
             websocket,
             MESSAGE_ENTITY_SNAPSHOT,
@@ -292,6 +297,7 @@ class SITWebSocketView(HomeAssistantView):
         hass = request.app["hass"]
         runtime = _runtime_for_device_id(hass, device_id)
         if runtime is None:
+            _LOGGER.warning("Rejected SIT websocket for unknown device id %s", device_id)
             await websocket.send_json(
                 {
                     "type": MESSAGE_ERROR,
@@ -305,6 +311,12 @@ class SITWebSocketView(HomeAssistantView):
             return websocket
 
         authenticated = False
+        peername = request.transport.get_extra_info("peername")
+        _LOGGER.debug(
+            "SIT websocket connected for %s from %s",
+            runtime.device_id,
+            peername,
+        )
 
         try:
             async for message in websocket:
@@ -329,6 +341,11 @@ class SITWebSocketView(HomeAssistantView):
                     )
                     break
         except ValueError as err:
+            _LOGGER.warning(
+                "Rejected SIT websocket message for %s: %s",
+                runtime.device_id,
+                err,
+            )
             await runtime.async_send(
                 websocket,
                 MESSAGE_ERROR,
@@ -336,6 +353,7 @@ class SITWebSocketView(HomeAssistantView):
             )
         finally:
             runtime.clients.discard(websocket)
+            _LOGGER.debug("SIT websocket disconnected for %s", runtime.device_id)
 
         return websocket
 
@@ -359,6 +377,11 @@ async def _async_handle_text_message(
             raise ValueError("auth payload device_id does not match websocket URL")
 
         runtime.clients.add(websocket)
+        _LOGGER.debug(
+            "SIT websocket authenticated for %s with %s exposed entities",
+            runtime.device_id,
+            len(runtime.exposed_entities),
+        )
         await runtime.async_send(
             websocket,
             MESSAGE_AUTH_OK,

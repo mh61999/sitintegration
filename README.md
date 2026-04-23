@@ -57,6 +57,9 @@ Home Assistant generates a lifetime token and sends:
   "device_name": "Kitchen tablet",
   "auth_token": "generated-token",
   "ha_websocket_path": "/api/sit/ws/android-device-id",
+  "ha_local_ip": "192.168.1.10",
+  "ha_base_url": "http://homeassistant.local:8123",
+  "ha_websocket_url": "ws://192.168.1.10:8123/api/sit/ws/android-device-id",
   "signature": {
     "algorithm": "HMAC-SHA256",
     "payload": "canonical JSON with sorted keys and no spaces"
@@ -76,6 +79,8 @@ The app confirms storage:
 ```
 
 Home Assistant then closes the pairing websocket. The app can stop hosting its temporary websocket and connect to Home Assistant at `/api/sit/ws/{device_id}`.
+
+If `ha_websocket_url` is present in the token message, the Android app should use it directly. If it is missing, the app can combine the Home Assistant host it inferred during pairing with `ha_websocket_path`.
 
 ## Runtime websocket
 
