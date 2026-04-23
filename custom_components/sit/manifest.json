@@ -1,11 +1,14 @@
 {
     "domain": "sit",
     "name": "SIT Integration",
-    "codeowners": [],
+    "codeowners": [
+        "@mh61999"
+    ],
     "config_flow": true,
     "dependencies": ["http"],
-    "documentation": "https://github.com/local/sit-integration",
+    "documentation": "https://github.com/mh61999/sitintegration",
     "iot_class": "local_push",
+    "issue_tracker": "https://github.com/mh61999/sitintegration/issues",
     "loggers": ["custom_components.sit"],
     "requirements": [],
     "version": "0.1.0"

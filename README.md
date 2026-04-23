@@ -4,9 +4,20 @@ Custom Home Assistant integration for pairing an Android tablet app over a tempo
 
 ## Install
 
-Copy `custom_components/sit` from this folder into your Home Assistant `custom_components` directory, restart Home Assistant, then add **SIT Integration** from the integrations UI.
+### HACS
 
-The Home Assistant integration domain is `sit`. The folder around it is named `SIT integration` because Home Assistant domains cannot contain spaces.
+1. Open HACS in Home Assistant.
+2. Open the three-dot menu and choose **Custom repositories**.
+3. Add `https://github.com/mh61999/sitintegration` as an **Integration** repository.
+4. Install **SIT Integration**.
+5. Restart Home Assistant.
+6. Go to **Settings > Devices & services**, add **SIT Integration**, and pair the tablet.
+
+### Manual
+
+Copy `custom_components/sit` from this repository into your Home Assistant `custom_components` directory, restart Home Assistant, then add **SIT Integration** from the integrations UI.
+
+The Home Assistant integration domain is `sit`.
 
 ## Pairing protocol
 
@@ -106,4 +117,3 @@ To control an exposed entity, the app sends a signed `service_call` message:
 ```
 
 The integration only allows service calls targeting entities selected in the config flow or options flow. It does not pass through area or device targets from the app.
-
