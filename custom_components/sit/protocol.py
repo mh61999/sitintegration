@@ -13,7 +13,7 @@ def canonical_payload(payload: dict[str, Any]) -> bytes:
     return json.dumps(
         payload,
         default=str,
-        ensure_ascii=False,
+        ensure_ascii=True,
         separators=(",", ":"),
         sort_keys=True,
     ).encode("utf-8")

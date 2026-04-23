@@ -131,7 +131,7 @@ async def async_pair_device(
                 "ha_websocket_path": ha_websocket_path,
                 "signature": {
                     "algorithm": HMAC_ALGORITHM,
-                    "payload": "canonical JSON with sorted keys and no spaces",
+                    "payload": "canonical JSON with sorted keys, no spaces, and escaped non-ASCII",
                 },
             }
             if ha_local_ip is not None:

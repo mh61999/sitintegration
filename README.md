@@ -62,7 +62,7 @@ Home Assistant generates a lifetime token and sends:
   "ha_websocket_url": "ws://192.168.1.10:8123/api/sit/ws/android-device-id",
   "signature": {
     "algorithm": "HMAC-SHA256",
-    "payload": "canonical JSON with sorted keys and no spaces"
+    "payload": "canonical JSON with sorted keys, no spaces, and escaped non-ASCII"
   }
 }
 ```
@@ -97,7 +97,7 @@ Incoming app messages use signed envelopes:
 }
 ```
 
-The signature is `HMAC-SHA256(auth_token, canonical_json(payload))`, where canonical JSON uses sorted keys and no whitespace separators.
+The signature is `HMAC-SHA256(auth_token, canonical_json(payload))`, where canonical JSON uses sorted keys, no whitespace separators, and JSON-escaped non-ASCII characters like `\u05d3`. In Python terms, this matches `json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)`.
 
 After auth, Home Assistant sends `auth_ok`, then `entity_snapshot` containing all currently exposed entity states. Later it sends `entity_update` only when the entity state string changes, plus `entity_removed` if an exposed entity disappears.
 
