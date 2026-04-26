@@ -32,6 +32,7 @@ from .const import (
     CONF_DEVICE_ID,
     CONF_DEVICE_NAME,
     CONF_EXPOSED_ENTITIES,
+    DATA_SERVICE_REGISTERED,
     DATA_VIEW_REGISTERED,
     DOMAIN,
     MESSAGE_ACTION_RESULT,
@@ -44,7 +45,9 @@ from .const import (
     MESSAGE_PING,
     MESSAGE_PONG,
     MESSAGE_SERVICE_CALL,
+    MESSAGE_SETUP,
     PROTOCOL_VERSION,
+    SERVICE_SEND_SETUP,
     SIT_WS_URL,
 )
 from .protocol import compare_signature, signed_envelope, state_to_payload
@@ -58,6 +61,7 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     """Set up the SIT integration."""
     hass.data.setdefault(DOMAIN, {})
     _async_register_view(hass)
+    _async_register_services(hass)
     return True
 
 
@@ -73,6 +77,20 @@ def _async_register_view(hass: HomeAssistant) -> None:
 
     hass.http.register_view(SITWebSocketView())
     hass.data[DOMAIN][DATA_VIEW_REGISTERED] = True
+
+
+def _async_register_services(hass: HomeAssistant) -> None:
+    """Register SIT services once."""
+    hass.data.setdefault(DOMAIN, {})
+    if hass.data[DOMAIN].get(DATA_SERVICE_REGISTERED):
+        return
+
+    async def _async_handle_send_setup(service_call) -> None:
+        runtime = _runtime_for_service_target(hass, service_call.data.get(CONF_DEVICE_ID))
+        await runtime.async_send_setup_command()
+
+    hass.services.async_register(DOMAIN, SERVICE_SEND_SETUP, _async_handle_send_setup)
+    hass.data[DOMAIN][DATA_SERVICE_REGISTERED] = True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -249,6 +267,21 @@ class SITRuntime:
                 "protocol": PROTOCOL_VERSION,
                 "device_id": self.device_id,
                 "entities": entities,
+            },
+        )
+
+    async def async_send_setup_command(self) -> None:
+        """Ask the connected tablet to return to setup mode."""
+        if not any(not websocket.closed for websocket in self.clients):
+            raise HomeAssistantError("No connected SIT tablet websocket is available.")
+
+        _LOGGER.debug("Sending SIT setup command to %s", self.device_id)
+        await self.async_broadcast(
+            MESSAGE_SETUP,
+            {
+                "protocol": PROTOCOL_VERSION,
+                "device_id": self.device_id,
+                "action": MESSAGE_SETUP,
             },
         )
 
@@ -533,6 +566,31 @@ def _runtime_for_device_id(
         if isinstance(value, SITRuntime) and value.device_id == device_id:
             return value
     return None
+
+
+def _runtime_for_service_target(
+    hass: HomeAssistant,
+    device_id: Any,
+) -> SITRuntime:
+    """Resolve the target runtime for a service call."""
+    runtimes = [
+        value
+        for value in hass.data.get(DOMAIN, {}).values()
+        if isinstance(value, SITRuntime)
+    ]
+    if not runtimes:
+        raise HomeAssistantError("No SIT tablet runtime is configured.")
+
+    if isinstance(device_id, str) and device_id:
+        runtime = _runtime_for_device_id(hass, device_id)
+        if runtime is None:
+            raise HomeAssistantError(f"Unknown SIT device_id: {device_id}")
+        return runtime
+
+    if len(runtimes) == 1:
+        return runtimes[0]
+
+    raise HomeAssistantError("Multiple SIT tablets are configured; provide device_id.")
 
 
 def _track_state_changes(hass: HomeAssistant, entity_ids, action):

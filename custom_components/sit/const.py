@@ -15,6 +15,7 @@ DEFAULT_PAIRING_PORT = 8765
 DEFAULT_PAIRING_WS_PATH = "/"
 
 DATA_VIEW_REGISTERED = "_websocket_view_registered"
+DATA_SERVICE_REGISTERED = "_service_registered"
 
 SIT_WS_URL = "/api/sit/ws/{device_id}"
 SIT_WS_PATH_TEMPLATE = "/api/sit/ws/{device_id}"
@@ -33,6 +34,8 @@ MESSAGE_PAIRING_TOKEN = "sit_pairing_token"
 MESSAGE_PING = "ping"
 MESSAGE_PONG = "pong"
 MESSAGE_SERVICE_CALL = "service_call"
+MESSAGE_SETUP = "setup"
 
 HMAC_ALGORITHM = "HMAC-SHA256"
 
+SERVICE_SEND_SETUP = "send_setup"

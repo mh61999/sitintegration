@@ -1,0 +1,10 @@
+send_setup:
+  name: Send setup command
+  description: Ask a connected SIT tablet to return to its setup flow.
+  fields:
+    device_id:
+      name: SIT device ID
+      description: Optional when only one SIT tablet is configured.
+      required: false
+      selector:
+        text:
