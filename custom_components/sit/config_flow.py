@@ -8,7 +8,6 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import AbortFlow, FlowResult
@@ -40,7 +39,8 @@ class SITConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(config_entry):
         """Return the options flow handler."""
-        return SITOptionsFlowHandler(config_entry)
+        del config_entry
+        return SITOptionsFlowHandler()
 
     async def async_step_user(self, user_input=None) -> FlowResult:
         """Pair a tablet and create a config entry."""
@@ -140,10 +140,6 @@ class SITConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class SITOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle SIT options."""
 
-    def __init__(self, config_entry: ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
-
     async def async_step_init(self, user_input=None) -> FlowResult:
         """Update exposed entities."""
         if user_input is not None:
@@ -158,15 +154,17 @@ class SITOptionsFlowHandler(config_entries.OptionsFlow):
 
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema(
+            data_schema=self.add_suggested_values_to_schema(
+                vol.Schema(
+                    {
+                        vol.Optional(CONF_EXPOSED_ENTITIES): _entity_selector(self.hass)
+                    }
+                ),
                 {
-                    vol.Optional(
-                        CONF_EXPOSED_ENTITIES,
-                        default=_normalize_entity_ids(
-                            self.config_entry.options.get(CONF_EXPOSED_ENTITIES)
-                        ),
-                    ): _entity_selector(self.hass)
-                }
+                    CONF_EXPOSED_ENTITIES: _normalize_entity_ids(
+                        self.config_entry.options.get(CONF_EXPOSED_ENTITIES)
+                    )
+                },
             ),
         )
 
