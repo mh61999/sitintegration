@@ -46,6 +46,7 @@ from .const import (
     MESSAGE_PONG,
     MESSAGE_SERVICE_CALL,
     MESSAGE_SETUP,
+    PLATFORMS,
     PROTOCOL_VERSION,
     SERVICE_SEND_SETUP,
     SIT_WS_URL,
@@ -101,6 +102,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await runtime.async_start()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = runtime
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     _async_register_device(hass, entry)
     return True
@@ -108,10 +110,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a paired SIT tablet."""
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     runtime = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
     if isinstance(runtime, SITRuntime):
         await runtime.async_stop()
-    return True
+    return unload_ok
 
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

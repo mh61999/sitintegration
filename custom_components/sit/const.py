@@ -1,6 +1,7 @@
 """Constants for the SIT tablet integration."""
 
 DOMAIN = "sit"
+PLATFORMS = ["button"]
 
 PROTOCOL_VERSION = 1
 
