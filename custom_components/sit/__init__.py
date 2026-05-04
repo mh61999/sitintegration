@@ -46,6 +46,7 @@ from .const import (
     MESSAGE_PONG,
     MESSAGE_SERVICE_CALL,
     MESSAGE_SETUP,
+    MESSAGE_UNPAIR,
     PLATFORMS,
     PROTOCOL_VERSION,
     SERVICE_SEND_SETUP,
@@ -115,6 +116,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if isinstance(runtime, SITRuntime):
         await runtime.async_stop()
     return unload_ok
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Best-effort notify the tablet that this pairing was removed."""
+    runtime = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    if isinstance(runtime, SITRuntime):
+        await runtime.async_send_unpair_command()
 
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -285,6 +293,22 @@ class SITRuntime:
                 "protocol": PROTOCOL_VERSION,
                 "device_id": self.device_id,
                 "action": MESSAGE_SETUP,
+            },
+        )
+
+    async def async_send_unpair_command(self) -> None:
+        """Ask the connected tablet to clear this pairing."""
+        if not any(not websocket.closed for websocket in self.clients):
+            _LOGGER.debug("No connected SIT tablet websocket available for unpair command.")
+            return
+
+        _LOGGER.debug("Sending SIT unpair command to %s", self.device_id)
+        await self.async_broadcast(
+            MESSAGE_UNPAIR,
+            {
+                "protocol": PROTOCOL_VERSION,
+                "device_id": self.device_id,
+                "action": MESSAGE_UNPAIR,
             },
         )
 
@@ -469,6 +493,16 @@ async def _async_handle_text_message(
                 "ok": True,
                 "nonce": payload["nonce"],
             },
+        )
+        return True
+
+    if message_type == MESSAGE_UNPAIR:
+        payload = runtime.verify_envelope(message)
+        action = payload.get("action")
+        if action not in (None, MESSAGE_UNPAIR):
+            raise ValueError("unexpected unpair action")
+        runtime.hass.async_create_task(
+            runtime.hass.config_entries.async_remove(runtime.entry.entry_id)
         )
         return True
 

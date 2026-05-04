@@ -36,6 +36,7 @@ MESSAGE_PING = "ping"
 MESSAGE_PONG = "pong"
 MESSAGE_SERVICE_CALL = "service_call"
 MESSAGE_SETUP = "setup"
+MESSAGE_UNPAIR = "unpair"
 
 HMAC_ALGORITHM = "HMAC-SHA256"
 
